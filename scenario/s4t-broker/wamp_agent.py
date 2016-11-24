@@ -10,6 +10,8 @@ import oslo_messaging
 import logging 
 import time
 from time import sleep
+import json
+
 
 
 #import eventlet
@@ -30,38 +32,35 @@ def printError(failure):
 
 def wamp_caller(args):
     """thread worker function"""
-    print 'Worker'
-    #res = yield self.call(u'com.myapp.hello',["NICOLA"])
-    #print("hello call says: {}".format(res))
-    #print args[0] + args[1]
+    print 'WAMP Caller thread started.'
     
-    #d = defer.Deferred()
-    
-    while True:
+    try:
       
-      data = q_forwards.get()
-      d = args[0].call(u'com.myapp.hello',data)
-      d.addCallback(printData)
-      d.addErrback(printError)
+	while True:
+	  
+	  data = q_forwards.get()
+	  
+	  json_message = json.loads(data)
+	  
+	  print "--> RPC FUNCTION: "+str(json_message['wamp_rpc_call'])
+	  print "--> RPC DATA: "+str(json_message['args'])
+	  
+	  d = args[0].call(json_message['wamp_rpc_call'],json_message['args'])
+	  d.addCallback(printData)
+	  d.addErrback(printError)
+
+	
+	return
       
-      """
-      time.sleep(5)
-      print '.'
-      d = args[0].call(u'com.myapp.hello',["NICOLA"])
-      d.addCallback(printData)
-      d.addErrback(printError)
-      
-      """
-    
-    return
-  
+    except KeyboardInterrupt:
+      print("Stopping WAMP caller")  
 
 
 # WAMP REACTOR CLASS
 class MyComponent(ApplicationSession):
     @inlineCallbacks
     def onJoin(self, details):
-        print("WAMP session ready")
+        print("WAMP session ready.")
         
 	t = threading.Thread(target=wamp_caller, args=([self],))
 	threads.append(t)
@@ -78,11 +77,10 @@ class MyComponent(ApplicationSession):
       
 
 # OSLO ENDPOINT for target=test
-class TestEndpoint(object):
+class WampEndpoint(object):
 
-    def test(self, ctx, arg):
-	
-	#response = "CONDUCTOR "+arg[0]+" sent: "+ arg[1]
+    def s4t_invoke_wamp(self, ctx, arg):
+
 	print "CONDUCTOR sent me: "+str(arg)
 	
 	q_forwards.put(arg)
@@ -107,15 +105,14 @@ def oslo_rpc(server):
     """thread worker function"""
     print "AMQP server starting... "
 
-    server.start()
-    server.wait()
+    try:
+      
+	server.start()
+	server.wait()
 	
-    """
-    while True:
-      time.sleep(1)
-  
-    return
-    """
+    except KeyboardInterrupt:
+      print("Stopping OSLO server")
+
   
 
   
@@ -131,12 +128,12 @@ if __name__ == '__main__':
     try:
       
       endpoints = [
-	TestEndpoint(),
+	WampEndpoint(),
       ]  
       
       transport_url = 'rabbit://admin:0penstack!@192.168.17.251:5672/'
       transport = oslo_messaging.get_transport(cfg.CONF, transport_url)
-      target = oslo_messaging.Target(topic='test', server='server1')     
+      target = oslo_messaging.Target(topic='s4t_invoke_wamp', server='server1')     
       
       server = oslo_messaging.get_rpc_server(transport, target, endpoints, executor='blocking')
       
@@ -151,5 +148,5 @@ if __name__ == '__main__':
 
       
     except KeyboardInterrupt:
-      print("Stopping server")
+      print("Stopping WAMP-agent server")
 
