@@ -22,7 +22,7 @@ print 'client_name:', client_name
 
 
 
-transport_url = 'rabbit://admin:0penstack!@192.168.17.251:5672/'
+transport_url = 'rabbit://openstack:0penstack!@controller:5672/'
 transport = oslo_messaging.get_transport(cfg.CONF, transport_url)
 target = oslo_messaging.Target(topic='test')
 
