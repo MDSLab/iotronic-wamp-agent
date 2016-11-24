@@ -131,7 +131,7 @@ if __name__ == '__main__':
 	WampEndpoint(),
       ]  
       
-      transport_url = 'rabbit://admin:0penstack!@192.168.17.251:5672/'
+      transport_url = 'rabbit://openstack:0penstack@192.168.17.1:5672/'
       transport = oslo_messaging.get_transport(cfg.CONF, transport_url)
       target = oslo_messaging.Target(topic='s4t_invoke_wamp', server='server1')     
       
@@ -143,7 +143,7 @@ if __name__ == '__main__':
 
       
       print "WAMP server starting..."
-      runner = ApplicationRunner(url=u"ws://192.168.17.251:8080/ws", realm=u"s4t")
+      runner = ApplicationRunner(url=u"ws://192.168.17.1:8181/ws", realm=u"s4t")
       runner.run(MyComponent)
 
       
