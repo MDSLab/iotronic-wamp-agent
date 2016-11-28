@@ -7,12 +7,13 @@ class MyComponent(ApplicationSession):
     def onJoin(self, details):
         print("WAMP server session ready!")
 
-        def add(args):
-            return args[0] + args[1]
 
-        def hello(args):
-	    print "DEVICE received from WAMP AGENT: "+str(args)
-	    result = "Hello by board to Conductor "+args[0]+" that said me "+args[1]
+        def add(x, y):
+            return x+y	
+	
+        def hello(client_name, message):
+	    #print "DEVICE received from WAMP AGENT: "+str(args)
+	    result = "Hello by board to Conductor "+client_name+" that said me "+message
 	    print "DEVICE result: "+str(result)
             return result
 	  
@@ -27,3 +28,8 @@ class MyComponent(ApplicationSession):
 if __name__ == '__main__':
     runner = ApplicationRunner(url=u"ws://192.168.17.1:8181/ws", realm=u"s4t")
     runner.run(MyComponent)
+    
+    
+    
+    
+    
