@@ -4,17 +4,6 @@ import sys
 import json
 
 
-'''
-class TestClient(object):
-
-    def __init__(self, transport):
-        target = messaging.Target(topic='test')
-        self._client = messaging.RPCClient(transport, target)
-
-    def test(self, ctxt, arg):
-        return self._client.call(ctxt, 'test', arg=arg)
-'''
-
 print 'Argument List:', str(sys.argv)
     
     
@@ -32,17 +21,30 @@ client = oslo_messaging.RPCClient(transport, target)
 
 ctxt={}
 
+
+
+
+wamp_rpc_call="com.myapp.add"
+args = ( 2, 3 )
+#print "DATA:",wamp_rpc_call,args
+print client.call(ctxt, s4t_topic, wamp_rpc_call=wamp_rpc_call, data=args) 
+
+
 wamp_rpc_call="com.myapp.hello"
-args=[ client_name, "yolo" ]
+args = (client_name, "yolo")
+#print "DATA:",wamp_rpc_call,args
+print client.call(ctxt, s4t_topic, wamp_rpc_call=wamp_rpc_call, data=args) 
 
 
-message = {}
-message['wamp_rpc_call'] = wamp_rpc_call
-message['args'] = args
-json_message = json.dumps(message) #{"wamp_rpc_call":"'+wamp_rpc_call+'", "args":'+args+' }
 
 
-print 'message to send:', str(json_message)
 
 
-print client.call(ctxt, s4t_topic, arg=json_message) 
+
+
+
+
+
+
+
+
