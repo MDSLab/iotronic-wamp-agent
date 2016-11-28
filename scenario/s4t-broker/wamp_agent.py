@@ -30,7 +30,7 @@ def printError(failure):
     print "ERROR "+str(failure)
 
 
-def wamp_caller(args):
+def wamp_caller(session):
     """thread worker function"""
     print 'WAMP Caller thread started.'
     
@@ -38,14 +38,9 @@ def wamp_caller(args):
       
 	while True:
 	  
-	  data = q_forwards.get()
-	  
-	  json_message = json.loads(data)
-	  
-	  print "--> RPC FUNCTION: "+str(json_message['wamp_rpc_call'])
-	  print "--> RPC DATA: "+str(json_message['args'])
-	  
-	  d = args[0].call(json_message['wamp_rpc_call'],json_message['args'])
+	  dati = q_forwards.get()
+
+	  d = session.call(dati['wamp_rpc_call'], *dati['data'] )
 	  d.addCallback(printData)
 	  d.addErrback(printError)
 
@@ -62,7 +57,7 @@ class MyComponent(ApplicationSession):
     def onJoin(self, details):
         print("WAMP session ready.")
         
-	t = threading.Thread(target=wamp_caller, args=([self],))
+	t = threading.Thread(target=wamp_caller, args=(self,))
 	threads.append(t)
 	t.start()
       
@@ -79,11 +74,11 @@ class MyComponent(ApplicationSession):
 # OSLO ENDPOINT for target=test
 class WampEndpoint(object):
 
-    def s4t_invoke_wamp(self, ctx, arg):
+    def s4t_invoke_wamp(self, ctx, **kwarg):
 
-	print "CONDUCTOR sent me: "+str(arg)
+	print "CONDUCTOR sent me:",kwarg
 	
-	q_forwards.put(arg)
+	q_forwards.put(kwarg)
 	
 	while q_backwards.empty():
 	  pass
