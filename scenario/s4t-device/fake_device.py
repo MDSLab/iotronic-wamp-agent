@@ -1,20 +1,28 @@
 from autobahn.twisted.wamp import ApplicationSession, ApplicationRunner
-from twisted.internet.defer import inlineCallbacks
-from time import sleep
+from twisted.internet.defer import inlineCallbacks, returnValue
+#from autobahn.twisted.util import sleep
 
 class MyComponent(ApplicationSession):
+  
     @inlineCallbacks
     def onJoin(self, details):
         print("WAMP server session ready!")
 
-        def add(args):
-            return args[0] + args[1]
-
-        def hello(args):
-	    print "DEVICE received from WAMP AGENT: "+str(args)
-	    result = "Hello by board to Conductor "+args[0]+" that said me "+args[1]
+	@inlineCallbacks
+        def add(x, y):
+	    c = yield x+y
+            returnValue(c)
+	
+	@inlineCallbacks
+        def hello(client_name, message):
+	    from random import randrange
+	    #s = randrange(1, 10)
+	    #sleep(s)
+	    result = yield "Hello by board to Conductor "+client_name+" that said me "+message
 	    print "DEVICE result: "+str(result)
-            return result
+             
+            
+            returnValue(result)
 	  
         try:
             yield self.register(add, u'com.myapp.add')
@@ -27,3 +35,8 @@ class MyComponent(ApplicationSession):
 if __name__ == '__main__':
     runner = ApplicationRunner(url=u"ws://192.168.17.1:8181/ws", realm=u"s4t")
     runner.run(MyComponent)
+    
+    
+    
+    
+    
