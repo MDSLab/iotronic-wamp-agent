@@ -8,6 +8,7 @@ class MyComponent(ApplicationSession):
     def onJoin(self, details):
         print("WAMP server session ready!")
 
+<<<<<<< HEAD
 	@inlineCallbacks
         def add(x, y):
 	    c = yield x+y
@@ -19,6 +20,15 @@ class MyComponent(ApplicationSession):
 	    #s = randrange(1, 10)
 	    #sleep(s)
 	    result = yield "Hello by board to Conductor "+client_name+" that said me "+message
+=======
+
+        def add(x, y):
+            return x+y	
+	
+        def hello(client_name, message):
+	    #print "DEVICE received from WAMP AGENT: "+str(args)
+	    result = "Hello by board to Conductor "+client_name+" that said me "+message
+>>>>>>> 712f99b9d53304c891ad59b347912238469fe4c8
 	    print "DEVICE result: "+str(result)
              
             

@@ -41,6 +41,7 @@ test=None
 global DB_THR
 DB_THR={}
 
+<<<<<<< HEAD
 
 
 
@@ -51,11 +52,40 @@ def printD(d, uuid):
     print "DEVICE sent:",DB_THR[uuid]['result']
     
     
+=======
+def wamp_caller(session):
+    """thread worker function"""
+    print 'WAMP Caller thread started.'
+    
+    try:
+      
+	while True:
+	  
+	  dati = q_forwards.get()
+
+	  d = session.call(dati['wamp_rpc_call'], *dati['data'] )
+	  d.addCallback(printData)
+	  d.addErrback(printError)
+>>>>>>> 712f99b9d53304c891ad59b347912238469fe4c8
 
 
 def printE(failure):
     print "ERROR "+str(failure)      
 
+<<<<<<< HEAD
+=======
+# WAMP REACTOR CLASS
+class MyComponent(ApplicationSession):
+    @inlineCallbacks
+    def onJoin(self, details):
+        print("WAMP session ready.")
+        
+	t = threading.Thread(target=wamp_caller, args=(self,))
+	threads.append(t)
+	t.start()
+      
+        yield "JOINED to WAMP!"
+>>>>>>> 712f99b9d53304c891ad59b347912238469fe4c8
 
 
 
@@ -92,9 +122,17 @@ class WampEndpoint(object):
     def s4t_invoke_wamp(self, ctx, **kwarg):
 
 	print "CONDUCTOR sent me:",kwarg
+<<<<<<< HEAD
 	req_uuid = uuid.uuid4()
 	DB_THR[req_uuid]={}
 	DB_THR[req_uuid]['result']=None
+=======
+	
+	q_forwards.put(kwarg)
+	
+	while q_backwards.empty():
+	  pass
+>>>>>>> 712f99b9d53304c891ad59b347912238469fe4c8
 	
 	th = threading.Thread(target=wamp_request,args=(req_uuid, kwarg,self))
 	threads.append(th)

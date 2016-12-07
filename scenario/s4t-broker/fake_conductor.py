@@ -23,12 +23,20 @@ ctxt={}
 
 
 
+<<<<<<< HEAD
 """
+=======
+
+>>>>>>> 712f99b9d53304c891ad59b347912238469fe4c8
 wamp_rpc_call="com.myapp.add"
 args = ( 2, 3 )
 #print "DATA:",wamp_rpc_call,args
 print client.call(ctxt, s4t_topic, wamp_rpc_call=wamp_rpc_call, data=args) 
+<<<<<<< HEAD
 """
+=======
+
+>>>>>>> 712f99b9d53304c891ad59b347912238469fe4c8
 
 wamp_rpc_call="com.myapp.hello"
 args = (client_name, "yolo")
