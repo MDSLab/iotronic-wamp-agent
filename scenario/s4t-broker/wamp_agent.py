@@ -9,52 +9,50 @@ from autobahn.wamp import types
 
 
 import threading
-from Queue import Queue
-
-from oslo_config import cfg
 import oslo_messaging
 
-import logging 
-import time
-from time import sleep
-import json
-import uuid
+from oslo_config import cfg
+from oslo_log import log as logging
 
-from concurrent.futures import ThreadPoolExecutor
-global pool
-pool = ThreadPoolExecutor(3) #pool == executor
+LOG = logging.getLogger(__name__)
+CONF = cfg.CONF
+CONF.debug=True
 
-from oslo_log import log
-
-LOG = log.getLogger(__name__)
-
-threads=[]
-DB_THR={}
-test=None
+DOMAIN = "scenario"
+logging.register_options(CONF)
+logging.setup(CONF, DOMAIN)
 
 
-def wamp_request(req_uuid,e, kwarg,session):
+shared_result={}
+wamp_session_caller=None
+
+
+def wamp_request(e, kwarg,session):
+    
+    id=threading.current_thread().ident
+    shared_result[id]={}
+    shared_result[id]['result']=None
   
-    def printD(d):
-      DB_THR[req_uuid]['result']=d
-      print "DEVICE sent:",d
+    def success(d):
+      shared_result[id]['result']=d
+      LOG.debug( "DEVICE sent: %s", str(d))
       e.set()
-      return DB_THR[req_uuid]['result']
+      return shared_result[id]['result']
       
       
-    def printE(failure):
-      DB_THR[req_uuid]['result']=failure
-      print "ERROR "+str(failure)
+    def fail(failure):
+      shared_result[id]['result']=failure
+      LOG.error( "WAMP FAILURE: %s", str(failure))
       e.set()
-      return DB_THR[req_uuid]['result']
-      
-    global test
-    d = session.wamp_session.call(test, kwarg['wamp_rpc_call'],*kwarg['data'])
-    d.addCallback(printD)	      
-    d.addErrback(printE)
+      return shared_result[id]['result']
+    
+    
+    d = session.wamp_session.call(wamp_session_caller, kwarg['wamp_rpc_call'],*kwarg['data'])
+    d.addCallback(success)	      
+    d.addErrback(fail)
 
 
-# OSLO ENDPOINT for target=test
+# OSLO ENDPOINT
 class WampEndpoint(object):
     
     def __init__(self,wamp_session):
@@ -62,45 +60,41 @@ class WampEndpoint(object):
 
     def s4t_invoke_wamp(self, ctx, **kwarg):
         e = threading.Event()
-	print "CONDUCTOR sent me:",kwarg
-	
-	req_uuid = uuid.uuid4()
-	DB_THR[req_uuid]={}
-	DB_THR[req_uuid]['result']=None
-	
-	th = threading.Thread(target=wamp_request,args=(req_uuid,e, kwarg,self))
-	#threads.append(th)
+	LOG.debug( "CONDUCTOR sent me:",kwarg)
+
+	th = threading.Thread(target=wamp_request,args=(e, kwarg,self))
 	th.start()
         
         e.wait()
-	print DB_THR[req_uuid]['result']
+	LOG.debug("result received from wamp call: %s", str(shared_result[th.ident]['result']))
 	
-	return  DB_THR[req_uuid]['result']
+	result=shared_result[th.ident]['result']
+	del shared_result[th.ident]['result']
+	return result
 
 
 # THREAD OSLO SERVER
 def oslo_rpc(server):
-    """thread worker function"""
-    print "AMQP server starting... "
+    LOG.info("AMQP server starting... ")
 
     try:
 	server.start()
-	server.wait()
+	#server.wait()
 	
     except KeyboardInterrupt:
-      print("Stopping OSLO server")
+      LOG.info("Stopping OSLO server")
 
 
 class MyFrontendComponent(wamp.ApplicationSession):
     
     def onJoin(self, details):
-        global test
-        test=self
-	print("WAMP session ready.")
+        global wamp_session_caller
+        wamp_session_caller=self
+	LOG.info("WAMP session ready.")
 
 
     def onDisconnect(self):
-	print("disconnected")
+	LOG.info("disconnected")
         reactor.stop()
 
 
@@ -108,34 +102,26 @@ class MyClientFactory(websocket.WampWebSocketClientFactory, ReconnectingClientFa
     maxDelay = 30
 
     def clientConnectionFailed(self, connector, reason):
-        print "*************************************"
-        print "Connection Failed"
-        print "reason:", reason
-        print "*************************************"
+        #print "reason:", reason
+        LOG.warning("Wamp Connection Failed.")
         ReconnectingClientFactory.clientConnectionFailed(self, connector, reason)
 
     def clientConnectionLost(self, connector, reason):
-        print "*************************************"
-        print "Connection Lost"
-        print "reason:", reason
-        print "*************************************"
+        #print "reason:", reason
+        LOG.warning("Wamp Connection Lost.")
         ReconnectingClientFactory.clientConnectionLost(self, connector, reason)
  
 
 if __name__ == '__main__':
   
     try:
-      # WAMP CONFIG
-      
-      ## 1) create a WAMP application session factory
+      # WAMP CONFIG      
       component_config = types.ComponentConfig(realm = u"s4t")
       session_factory = wamp.ApplicationSessionFactory(config = component_config)
       session_factory.session = MyFrontendComponent
 
-      ## 2) create a WAMP-over-WebSocket transport client factory
       transport_factory = MyClientFactory(session_factory)
       
-      ## 3) start the client from a Twisted endpoint
       transport_factory.host = '192.168.17.1'
       transport_factory.port = 8181
       websocket.connectWS(transport_factory)  
@@ -152,20 +138,16 @@ if __name__ == '__main__':
       
       server = oslo_messaging.get_rpc_server(transport, target, endpoints, executor='threading')
       
-      ## 4) now enter the Twisted reactor loop
-      print "REACTOR starting..."
-      
-      
+      LOG.info("REACTOR starting...")
       th = threading.Thread(target=oslo_rpc, args=(server,))
-      threads.append(th)
       th.start()
 
       
-      print "WAMP server starting..."
+      LOG.info("WAMP server starting...")
       
 
       reactor.run()
       
     except KeyboardInterrupt:
-      print("Stopping WAMP-agent server")
+      LOG.info("Stopping WAMP-agent server")
 
