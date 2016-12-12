@@ -25,12 +25,46 @@ global pool
 pool = ThreadPoolExecutor(3) #pool == executor
 
 from oslo_log import log
+<<<<<<< HEAD
+=======
+
+LOG = log.getLogger(__name__)
+>>>>>>> 058bae610c8a9a20fc2d1c2bf91d3beeaf817c74
 
 LOG = log.getLogger(__name__)
 
-#import eventlet
-#eventlet.monkey_patch()      
+<<<<<<< HEAD
+threads=[]
 
+test=None
+
+DB_THR={}
+
+
+def wamp_request(req_uuid,e, kwarg,session):
+  
+    def printD(d):
+      DB_THR[req_uuid]['result']=d
+      print "DEVICE sent:",d
+      e.set()
+      return DB_THR[req_uuid]['result']
+      
+      
+    def printE(failure):
+      DB_THR[req_uuid]['result']=failure
+      print "ERROR "+str(failure)
+      e.set()
+      return DB_THR[req_uuid]['result']
+      
+    global test
+    d = session.wamp_session.call(test, kwarg['wamp_rpc_call'],*kwarg['data'])
+    d.addCallback(printD)	      
+    d.addErrback(printE)
+
+
+
+
+=======
 q_forwards = Queue()
 q_backwards = Queue()
       
@@ -112,6 +146,7 @@ def wamp_request(req_uuid, kwarg,session):
     d.addErrback(printE)
 
 
+>>>>>>> 058bae610c8a9a20fc2d1c2bf91d3beeaf817c74
 
 # OSLO ENDPOINT for target=test
 class WampEndpoint(object):
@@ -120,8 +155,23 @@ class WampEndpoint(object):
         self.wamp_session=wamp_session
 
     def s4t_invoke_wamp(self, ctx, **kwarg):
-
+        e = threading.Event()
 	print "CONDUCTOR sent me:",kwarg
+<<<<<<< HEAD
+	req_uuid = uuid.uuid4()
+	DB_THR[req_uuid]={}
+	DB_THR[req_uuid]['result']=None
+	
+	th = threading.Thread(target=wamp_request,args=(req_uuid,e, kwarg,self))
+	#threads.append(th)
+	th.start()
+        
+        e.wait()
+	print DB_THR[req_uuid]['result']
+	
+	return  DB_THR[req_uuid]['result']
+
+=======
 <<<<<<< HEAD
 	req_uuid = uuid.uuid4()
 	DB_THR[req_uuid]={}
@@ -146,6 +196,7 @@ class WampEndpoint(object):
 	
 	return  DB_THR[req_uuid]['result']
 
+>>>>>>> 058bae610c8a9a20fc2d1c2bf91d3beeaf817c74
 
         
 
@@ -163,8 +214,9 @@ def oslo_rpc(server):
     except KeyboardInterrupt:
       print("Stopping OSLO server")
 
-  
 
+<<<<<<< HEAD
+=======
   
   
 
@@ -203,9 +255,37 @@ class MyClientFactory(websocket.WampWebSocketClientFactory, ReconnectingClientFa
         print "reason:", reason
         print "*************************************"
         ReconnectingClientFactory.clientConnectionLost(self, connector, reason)
+>>>>>>> 058bae610c8a9a20fc2d1c2bf91d3beeaf817c74
+
+class MyFrontendComponent(wamp.ApplicationSession):
+    
+    def onJoin(self, details):
+        global test
+        test=self
+	print("WAMP session ready.")
 
 
+    def onDisconnect(self):
+	print("disconnected")
+        reactor.stop()
 
+
+class MyClientFactory(websocket.WampWebSocketClientFactory, ReconnectingClientFactory):
+    maxDelay = 30
+
+    def clientConnectionFailed(self, connector, reason):
+        print "*************************************"
+        print "Connection Failed"
+        print "reason:", reason
+        print "*************************************"
+        ReconnectingClientFactory.clientConnectionFailed(self, connector, reason)
+
+    def clientConnectionLost(self, connector, reason):
+        print "*************************************"
+        print "Connection Lost"
+        print "reason:", reason
+        print "*************************************"
+        ReconnectingClientFactory.clientConnectionLost(self, connector, reason)
  
 
 if __name__ == '__main__':
@@ -213,12 +293,21 @@ if __name__ == '__main__':
     try:
         
       # WAMP CONFIG
+<<<<<<< HEAD
       
       ## 1) create a WAMP application session factory
       component_config = types.ComponentConfig(realm = u"s4t")
       session_factory = wamp.ApplicationSessionFactory(config = component_config)
       session_factory.session = MyFrontendComponent
       
+=======
+      
+      ## 1) create a WAMP application session factory
+      component_config = types.ComponentConfig(realm = u"s4t")
+      session_factory = wamp.ApplicationSessionFactory(config = component_config)
+      session_factory.session = MyFrontendComponent
+      
+>>>>>>> 058bae610c8a9a20fc2d1c2bf91d3beeaf817c74
       ## 2) create a WAMP-over-WebSocket transport client factory
       transport_factory = MyClientFactory(session_factory)
       
