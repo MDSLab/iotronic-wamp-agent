@@ -9,10 +9,13 @@ from autobahn.wamp import types
 
 
 import threading
+from threading import Thread
+
 import oslo_messaging
 
 from oslo_config import cfg
 from oslo_log import log as logging
+
 
 LOG = logging.getLogger(__name__)
 CONF = cfg.CONF
@@ -73,18 +76,6 @@ class WampEndpoint(object):
 	return result
 
 
-# THREAD OSLO SERVER
-def oslo_rpc(server):
-    LOG.info("AMQP server starting... ")
-
-    try:
-	server.start()
-	#server.wait()
-	
-    except KeyboardInterrupt:
-      LOG.info("Stopping OSLO server")
-
-
 class MyFrontendComponent(wamp.ApplicationSession):
     
     def onJoin(self, details):
@@ -111,11 +102,38 @@ class MyClientFactory(websocket.WampWebSocketClientFactory, ReconnectingClientFa
         LOG.warning("Wamp Connection Lost.")
         ReconnectingClientFactory.clientConnectionLost(self, connector, reason)
  
+import time
 
-if __name__ == '__main__':
-  
-    try:
-      # WAMP CONFIG      
+class RPCServer(Thread):
+    def __init__(self):
+        
+        # AMQP CONFIG
+        endpoints = [
+            WampEndpoint(MyFrontendComponent),
+        ]  
+        
+        Thread.__init__(self)
+        transport_url = 'rabbit://openstack:0penstack@192.168.17.1:5672/'
+        transport = oslo_messaging.get_transport(cfg.CONF, transport_url)
+        target = oslo_messaging.Target(topic='s4t_invoke_wamp', server='server1')     
+
+        self.server = oslo_messaging.get_rpc_server(transport, target, endpoints, executor='threading')
+    
+    def run(self):
+        
+        try:
+            LOG.info("Starting AMQP server... ")
+            self.server.start()
+            #self.server.wait()
+        except KeyboardInterrupt:
+            
+            LOG.info("Stopping AMQP server... ")
+            self.server.stop()
+            LOG.info("AMQP server stopped. ")
+        
+            
+class WampManager(object):
+    def __init__(self):
       component_config = types.ComponentConfig(realm = u"s4t")
       session_factory = wamp.ApplicationSessionFactory(config = component_config)
       session_factory.session = MyFrontendComponent
@@ -124,30 +142,26 @@ if __name__ == '__main__':
       
       transport_factory.host = '192.168.17.1'
       transport_factory.port = 8181
-      websocket.connectWS(transport_factory)  
+      websocket.connectWS(transport_factory) 
+    
+    def start(self):
+        LOG.info("Starting WAMP server...")
+        reactor.run()
         
-        
-      # AMQP CONFIG
-      endpoints = [
-	WampEndpoint(MyFrontendComponent),
-      ]  
-      
-      transport_url = 'rabbit://openstack:0penstack@192.168.17.1:5672/'
-      transport = oslo_messaging.get_transport(cfg.CONF, transport_url)
-      target = oslo_messaging.Target(topic='s4t_invoke_wamp', server='server1')     
-      
-      server = oslo_messaging.get_rpc_server(transport, target, endpoints, executor='threading')
-      
-      LOG.info("REACTOR starting...")
-      th = threading.Thread(target=oslo_rpc, args=(server,))
-      th.start()
+    def stop(self):        
+        LOG.info("Stopping WAMP-agent server...")
+        reactor.stop()
+        LOG.info("WAMP server stopped.")
 
-      
-      LOG.info("WAMP server starting...")
-      
 
-      reactor.run()
-      
+if __name__ == '__main__':
+    r=RPCServer()
+    w=WampManager()
+
+    try:
+        r.start()
+        w.start()
     except KeyboardInterrupt:
-      LOG.info("Stopping WAMP-agent server")
-
+        w.stop()
+        r.stop()
+        exit()
