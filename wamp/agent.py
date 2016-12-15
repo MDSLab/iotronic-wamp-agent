@@ -150,16 +150,3 @@ class WampManager(object):
         LOG.info("Stopping WAMP-agent server...")
         reactor.stop()
         LOG.info("WAMP server stopped.")
-
-
-if __name__ == '__main__':
-    r=RPCServer()
-    w=WampManager()
-
-    try:
-        r.start()
-        w.start()
-    except KeyboardInterrupt:
-        w.stop()
-        r.stop()
-        exit()
