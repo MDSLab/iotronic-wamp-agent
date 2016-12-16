@@ -20,8 +20,8 @@ Iotronic Wamp Agent
 """
 
 
-from wamp.agent import RPCServer
-from wamp.agent import WampManager
+from iotronic.wamp.agent import RPCServer
+from iotronic.wamp.agent import WampManager
 
 
 if __name__ == '__main__':
