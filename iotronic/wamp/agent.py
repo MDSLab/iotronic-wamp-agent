@@ -18,10 +18,29 @@ from oslo_log import log as logging
 
 
 LOG = logging.getLogger(__name__)
-CONF = cfg.CONF
-CONF.debug=True
 
-DOMAIN = "scenario"
+wamp_opts = [
+    cfg.StrOpt('wamp_ip',
+               default='192.168.17.1',
+               help=('URL of wamp broker')),
+    cfg.IntOpt('wamp_port',
+               default=8181,
+               help='port wamp broker'),
+    cfg.StrOpt('wamp_realm',
+               default='s4t',
+               help=('realm broker')),
+]
+
+
+CONF = cfg.CONF
+CONF.register_opts(wamp_opts, 'wamp')
+
+###################
+CONF.debug=True
+CONF.transport_url='rabbit://openstack:0penstack@controller:5672/'
+###################
+
+DOMAIN = "iotronic-wamp-agent"
 logging.register_options(CONF)
 logging.setup(CONF, DOMAIN)
 
@@ -76,7 +95,7 @@ class WampEndpoint(object):
 	return result
 
 
-class MyFrontendComponent(wamp.ApplicationSession):
+class WampFrontend(wamp.ApplicationSession):
     
     def onJoin(self, details):
         global wamp_session_caller
@@ -89,7 +108,7 @@ class MyFrontendComponent(wamp.ApplicationSession):
         reactor.stop()
 
 
-class MyClientFactory(websocket.WampWebSocketClientFactory, ReconnectingClientFactory):
+class WampClientFactory(websocket.WampWebSocketClientFactory, ReconnectingClientFactory):
     maxDelay = 30
 
     def clientConnectionFailed(self, connector, reason):
@@ -107,11 +126,11 @@ class RPCServer(Thread):
         
         # AMQP CONFIG
         endpoints = [
-            WampEndpoint(MyFrontendComponent),
+            WampEndpoint(WampFrontend),
         ]  
         
         Thread.__init__(self)
-        transport_url = 'rabbit://openstack:0penstack@192.168.17.1:5672/'
+        transport_url = CONF.transport_url
         transport = oslo_messaging.get_transport(cfg.CONF, transport_url)
         target = oslo_messaging.Target(topic='s4t_invoke_wamp', server='server1')     
 
@@ -122,7 +141,6 @@ class RPCServer(Thread):
         try:
             LOG.info("Starting AMQP server... ")
             self.server.start()
-            #self.server.wait()
         except KeyboardInterrupt:
             
             LOG.info("Stopping AMQP server... ")
@@ -132,14 +150,15 @@ class RPCServer(Thread):
             
 class WampManager(object):
     def __init__(self):
-      component_config = types.ComponentConfig(realm = u"s4t")
+      component_config = types.ComponentConfig(realm = unicode(CONF.wamp.wamp_realm))
       session_factory = wamp.ApplicationSessionFactory(config = component_config)
-      session_factory.session = MyFrontendComponent
+      session_factory.session = WampFrontend
 
-      transport_factory = MyClientFactory(session_factory)
+      transport_factory = WampClientFactory(session_factory)
       
-      transport_factory.host = '192.168.17.1'
-      transport_factory.port = 8181
+      transport_factory.host = CONF.wamp.wamp_ip
+      transport_factory.port = CONF.wamp.wamp_port
+      LOG.debug("\nWamp IP: %s\nWamp Port: %s\nWamp realm: %s\n", CONF.wamp.wamp_ip, CONF.wamp.wamp_port, CONF.wamp.wamp_realm)
       websocket.connectWS(transport_factory) 
     
     def start(self):
@@ -150,3 +169,16 @@ class WampManager(object):
         LOG.info("Stopping WAMP-agent server...")
         reactor.stop()
         LOG.info("WAMP server stopped.")
+
+class WampAgent(object):
+    def __init__(self):
+        r=RPCServer()
+        w=WampManager()
+
+        try:
+            r.start()
+            w.start()
+        except KeyboardInterrupt:
+            w.stop()
+            r.stop()
+            exit()

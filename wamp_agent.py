@@ -20,18 +20,7 @@ Iotronic Wamp Agent
 """
 
 
-from iotronic.wamp.agent import RPCServer
-from iotronic.wamp.agent import WampManager
-
+from iotronic.wamp.agent import WampAgent
 
 if __name__ == '__main__':
-    r=RPCServer()
-    w=WampManager()
-
-    try:
-        r.start()
-        w.start()
-    except KeyboardInterrupt:
-        w.stop()
-        r.stop()
-        exit()
+    wa=WampAgent()
