@@ -49,6 +49,7 @@ shared_result={}
 wamp_session_caller=None
 
 
+
 def wamp_request(e, kwarg,session):
     
     id=threading.current_thread().ident
@@ -77,8 +78,9 @@ def wamp_request(e, kwarg,session):
 # OSLO ENDPOINT
 class WampEndpoint(object):
     
-    def __init__(self,wamp_session):
+    def __init__(self,wamp_session,agent_uuid):
         self.wamp_session=wamp_session
+        setattr(self, agent_uuid+'.s4t_invoke_wamp', self.s4t_invoke_wamp)
 
     def s4t_invoke_wamp(self, ctx, **kwarg):
         e = threading.Event()
@@ -93,6 +95,8 @@ class WampEndpoint(object):
 	result=shared_result[th.ident]['result']
 	del shared_result[th.ident]['result']
 	return result
+    
+    
 
 
 class WampFrontend(wamp.ApplicationSession):
@@ -122,17 +126,17 @@ class WampClientFactory(websocket.WampWebSocketClientFactory, ReconnectingClient
         ReconnectingClientFactory.clientConnectionLost(self, connector, reason)
 
 class RPCServer(Thread):
-    def __init__(self):
+    def __init__(self,agent_uuid):
         
         # AMQP CONFIG
         endpoints = [
-            WampEndpoint(WampFrontend),
+            WampEndpoint(WampFrontend,agent_uuid),
         ]  
         
         Thread.__init__(self)
         transport_url = CONF.transport_url
         transport = oslo_messaging.get_transport(cfg.CONF, transport_url)
-        target = oslo_messaging.Target(topic='s4t_invoke_wamp', server='server1')     
+        target = oslo_messaging.Target(topic=agent_uuid+'.s4t_invoke_wamp', server='server1')     
 
         self.server = oslo_messaging.get_rpc_server(transport, target, endpoints, executor='threading')
     
@@ -172,7 +176,10 @@ class WampManager(object):
 
 class WampAgent(object):
     def __init__(self):
-        r=RPCServer()
+        
+        agent_uuid='agent'
+        
+        r=RPCServer(agent_uuid)
         w=WampManager()
 
         try:
