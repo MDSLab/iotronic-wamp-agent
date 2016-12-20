@@ -69,7 +69,7 @@ def wamp_request(e, kwarg,session):
       e.set()
       return shared_result[id]['result']
     
-    
+    LOG.debug("Calling %s...",kwarg['wamp_rpc_call'])
     d = session.wamp_session.call(wamp_session_caller, kwarg['wamp_rpc_call'],*kwarg['data'])
     d.addCallback(success)	      
     d.addErrback(fail)
@@ -101,9 +101,18 @@ class WampEndpoint(object):
 
 class WampFrontend(wamp.ApplicationSession):
     
+    def board_on_leave(self,session_id):
+        LOG.debug('A node with %s disconnectd', session_id)
+
+    def board_on_join(self,session_id):
+        LOG.debug('A node with %s joined', session_id)    
+
+    
     def onJoin(self, details):
         global wamp_session_caller
         wamp_session_caller=self
+        self.subscribe(self.board_on_leave, 'wamp.session.on_leave')
+        self.subscribe(self.board_on_join, 'wamp.session.on_join')
 	LOG.info("WAMP session ready.")
 
 

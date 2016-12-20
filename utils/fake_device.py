@@ -18,15 +18,15 @@ class MyComponent(ApplicationSession):
             from random import randrange
             s = randrange(1, 10)
             yield sleep(s)
-            result = "Hello by board to Conductor "+client_name+" that said me "+message+" - Time: "+str(s)
+            result = "Hello by board to Conductor "+client_name+" that told me "+message+" - Time: "+str(s)
             #result = yield "Hello by board to Conductor "+client_name+" that said me "+message
             print "DEVICE result: "+str(result)
 		
             returnValue(result)
 
         try:
-            yield self.register(add, u'com.myapp.add')
-            yield self.register(hello, u'com.myapp.hello')
+            yield self.register(add, u'board.add')
+            yield self.register(hello, u'board.hello')
             print("procedures registered")
         except Exception as e:
             print("could not register procedures: {0}".format(e))

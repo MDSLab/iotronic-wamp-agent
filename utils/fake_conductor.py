@@ -1,40 +1,31 @@
 from oslo_config import cfg
 import oslo_messaging
 import sys
-import json
-
-
-print 'Argument List:', str(sys.argv)
     
-client_name = sys.argv[1] if len(sys.argv) >= 2 else '...this is a test...'
-    
-print 'client_name:', client_name	      
-
+client_name = sys.argv[1] if len(sys.argv) >= 2 else 'TESTER'
 
 uuid_agent='agent'
+uuid_board='board'
+
 s4t_topic='s4t_invoke_wamp'
+full_topic=uuid_agent+'.'+s4t_topic
 
 transport_url = 'rabbit://openstack:0penstack@controller:5672'
 transport = oslo_messaging.get_transport(cfg.CONF, transport_url)
-target = oslo_messaging.Target(topic=uuid_agent+'.'+s4t_topic)
+target = oslo_messaging.Target(topic=full_topic)
 
 client = oslo_messaging.RPCClient(transport, target)
 
 ctxt={}
-'''
-wamp_rpc_call="com.myapp.add"
-args = ( 2, 3 )
-#print "DATA:",wamp_rpc_call,args
-print client.call(ctxt, s4t_topic, wamp_rpc_call=wamp_rpc_call, data=args) 
-'''
-wamp_rpc_call="com.myapp.hello"
-args = (client_name, "yolo")
-#print "DATA:",wamp_rpc_call,args
-print client.call(ctxt, uuid_agent+'.'+s4t_topic, wamp_rpc_call=wamp_rpc_call, data=args) 
+
+def execute(uuid_agent,uuid_board,rpc_name,ctxt={},rpc_args=()):
+    full_topic=uuid_agent+'.'+s4t_topic
+    wamp_rpc_call=uuid_board+"."+rpc_name
+    return client.call(ctxt, full_topic, wamp_rpc_call=wamp_rpc_call, data=rpc_args) 
 
 
-
-
+execute(uuid_agent,uuid_board,'add',ctxt,( 2, 3 ))
+execute(uuid_agent,uuid_board,'hello',ctxt,(client_name, "Y O L O"))
 
 
 
