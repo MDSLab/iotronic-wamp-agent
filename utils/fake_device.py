@@ -1,3 +1,4 @@
+#! /usr/bin/python
 from autobahn.twisted.wamp import ApplicationSession, ApplicationRunner
 from twisted.internet.defer import inlineCallbacks, returnValue
 from autobahn.twisted.util import sleep
@@ -16,7 +17,7 @@ class MyComponent(ApplicationSession):
         @inlineCallbacks
         def hello(client_name, message):
             from random import randrange
-            s = randrange(1, 10)
+            s = randrange(1, 2)
             yield sleep(s)
             result = "Hello by board to Conductor "+client_name+" that told me "+message+" - Time: "+str(s)
             #result = yield "Hello by board to Conductor "+client_name+" that said me "+message

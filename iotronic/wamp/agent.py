@@ -101,24 +101,28 @@ class WampEndpoint(object):
 
 class WampFrontend(wamp.ApplicationSession):
     
-    def board_on_leave(self,session_id):
-        LOG.debug('A node with %s disconnectd', session_id)
-
-    def board_on_join(self,session_id):
-        LOG.debug('A node with %s joined', session_id)    
 
     
     def onJoin(self, details):
         global wamp_session_caller
         wamp_session_caller=self
-        self.subscribe(self.board_on_leave, 'wamp.session.on_leave')
-        self.subscribe(self.board_on_join, 'wamp.session.on_join')
+        import iotronic.wamp.registerd_functions as fun
+        
+        self.subscribe(fun.board_on_leave, 'wamp.session.on_leave')
+        self.subscribe(fun.board_on_join, 'wamp.session.on_join')
+
+        try:
+            self.register(fun.register_board, u'register_board')
+            LOG.info("procedure registered")
+        except Exception as e:
+            LOG.error("could not register procedure: {0}".format(e))
+        
+        
 	LOG.info("WAMP session ready.")
 
 
     def onDisconnect(self):
 	LOG.info("disconnected")
-        reactor.stop()
 
 
 class WampClientFactory(websocket.WampWebSocketClientFactory, ReconnectingClientFactory):
