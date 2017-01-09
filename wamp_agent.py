@@ -21,6 +21,26 @@ Iotronic Wamp Agent
 
 
 from iotronic.wamp.agent import WampAgent
+from oslo_config import cfg
+
+
+wamp_opts = [
+    cfg.StrOpt('wamp_transport_url',
+            default='ws://192.168.17.1:8181/',
+            help=('URL of wamp broker')),
+    cfg.StrOpt('wamp_realm',
+            default='s4t',
+            help=('realm broker')),
+]
+
+
+CONF = cfg.CONF
+CONF.register_opts(wamp_opts, 'wamp')
+
+###################
+CONF.debug=True
+CONF.transport_url='rabbit://openstack:0penstack@controller:5672/'
+###################
 
 if __name__ == '__main__':
-    wa=WampAgent()
+    wa=WampAgent(CONF)

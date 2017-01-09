@@ -13,42 +13,12 @@ from threading import Thread
 
 import oslo_messaging
 
-from oslo_config import cfg
 from oslo_log import log as logging
-
 
 LOG = logging.getLogger(__name__)
 
-wamp_opts = [
-    cfg.StrOpt('wamp_ip',
-               default='192.168.17.1',
-               help=('URL of wamp broker')),
-    cfg.IntOpt('wamp_port',
-               default=8181,
-               help='port wamp broker'),
-    cfg.StrOpt('wamp_realm',
-               default='s4t',
-               help=('realm broker')),
-]
-
-
-CONF = cfg.CONF
-CONF.register_opts(wamp_opts, 'wamp')
-
-###################
-CONF.debug=True
-CONF.transport_url='rabbit://openstack:0penstack@controller:5672/'
-###################
-
-DOMAIN = "iotronic-wamp-agent"
-logging.register_options(CONF)
-logging.setup(CONF, DOMAIN)
-
-
 shared_result={}
 wamp_session_caller=None
-
-
 
 def wamp_request(e, kwarg,session):
     
@@ -139,7 +109,7 @@ class WampClientFactory(websocket.WampWebSocketClientFactory, ReconnectingClient
         ReconnectingClientFactory.clientConnectionLost(self, connector, reason)
 
 class RPCServer(Thread):
-    def __init__(self,agent_uuid):
+    def __init__(self,agent_uuid,CONF):
         
         # AMQP CONFIG
         endpoints = [
@@ -148,7 +118,7 @@ class RPCServer(Thread):
         
         Thread.__init__(self)
         transport_url = CONF.transport_url
-        transport = oslo_messaging.get_transport(cfg.CONF, transport_url)
+        transport = oslo_messaging.get_transport(CONF, transport_url)
         target = oslo_messaging.Target(topic=agent_uuid+'.s4t_invoke_wamp', server='server1')     
 
         self.server = oslo_messaging.get_rpc_server(transport, target, endpoints, executor='threading')
@@ -166,16 +136,13 @@ class RPCServer(Thread):
         
             
 class WampManager(object):
-    def __init__(self):
+    def __init__(self,CONF):
       component_config = types.ComponentConfig(realm = unicode(CONF.wamp.wamp_realm))
       session_factory = wamp.ApplicationSessionFactory(config = component_config)
       session_factory.session = WampFrontend
-
-      transport_factory = WampClientFactory(session_factory)
+      transport_factory = WampClientFactory(session_factory, url=CONF.wamp.wamp_transport_url)
       
-      transport_factory.host = CONF.wamp.wamp_ip
-      transport_factory.port = CONF.wamp.wamp_port
-      LOG.debug("\nWamp IP: %s\nWamp Port: %s\nWamp realm: %s\n", CONF.wamp.wamp_ip, CONF.wamp.wamp_port, CONF.wamp.wamp_realm)
+      LOG.debug("\nWamp URL: %s\nWamp realm: %s\n", CONF.wamp.wamp_transport_url, CONF.wamp.wamp_realm)
       websocket.connectWS(transport_factory) 
     
     def start(self):
@@ -188,12 +155,14 @@ class WampManager(object):
         LOG.info("WAMP server stopped.")
 
 class WampAgent(object):
-    def __init__(self):
-        
+    def __init__(self,CONF):
+        logging.register_options(CONF)
+        logging.setup(CONF, "iotronic-wamp-agent")
+
         agent_uuid='agent'
         
-        r=RPCServer(agent_uuid)
-        w=WampManager()
+        r=RPCServer(agent_uuid,CONF)
+        w=WampManager(CONF)
 
         try:
             r.start()
